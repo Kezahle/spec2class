@@ -1,0 +1,53 @@
+# Path: spec2class/conda-recipe/meta.yaml
+# This file goes in the conda-recipe/ subdirectory
+
+package:
+  name: spec2class
+  version: "1.0.0"
+
+source:
+  path: ..
+
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv"
+  entry_points:
+    - spec2class = spec2class.main:main
+
+requirements:
+  host:
+    - python >=3.10
+    - setuptools
+    - pip
+  run:
+    - python >=3.10
+    - pytorch-cpu >=2.0.0
+    - numpy <2
+    - pandas >=2.0.0,<3.0.0
+    - scikit-learn >=1.0.0
+    - scipy >=1.9.0
+    - tqdm
+    - huggingface_hub >=0.23
+
+test:
+  imports:
+    - spec2class
+    - torch
+  commands:
+    - spec2class --help
+
+about:
+  home: https://github.com/VickiPol/Spec2Class
+  license: MIT
+  license_family: MIT
+  license_file: ../LICENSE
+  summary: 'Accurate prediction of plant secondary metabolite class using deep learning from LC-MS/MS spectra'
+  description: |
+    Spec2Class is a deep-learning algorithm for the classification of plant 
+    secondary metabolites from high resolution LC-MS/MS spectra. It uses an 
+    ensemble of 43 binary neural network classifiers followed by an SVM for 
+    final multiclass prediction. Models are downloaded on-demand from HuggingFace,
+    keeping the package lightweight and always up-to-date.
+  dev_url: https://github.com/VickiPol/Spec2Class
+  doc_url: https://github.com/VickiPol/Spec2Class/blob/main/README.md

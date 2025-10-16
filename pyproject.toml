@@ -1,0 +1,96 @@
+# Path: spec2class/pyproject.toml
+# This file goes in the ROOT of your project directory
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spec2class"
+version = "1.0.0"
+description = "Accurate prediction of plant secondary metabolite class using deep learning"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Vicki Pol"}
+]
+keywords = ["mass-spectrometry", "deep-learning", "classification", "metabolomics", "plant-metabolites", "bioinformatics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "torch>=2.0.0",
+    "huggingface_hub>=0.23",
+    "numpy>=1.19.0,<2.0.0",
+    "pandas>=2.0.0,<3.0.0",
+    "scikit-learn>=1.0.0",
+    "scipy>=1.9.0",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "mypy>=1.0",
+    "pre-commit>=3.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/VickiPol/Spec2Class"
+Documentation = "https://github.com/VickiPol/Spec2Class#readme"
+Repository = "https://github.com/VickiPol/Spec2Class"
+Issues = "https://github.com/VickiPol/Spec2Class/issues"
+
+[project.scripts]
+spec2class = "spec2class.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["spec2class*"]
+
+[tool.setuptools.package-data]
+spec2class = ["config/*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311"]
+include = "\\.pyi?$"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--tb=short"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E402"]

@@ -1,0 +1,63 @@
+{
+    "binary_models": {
+      "repo_id": "VickiPol/binary_models",
+      "revision": "main",
+      "classes": [
+        "Aminosugars and aminoglycosides",
+        "Anthranilic acid alkaloids",
+        "Apocarotenoids",
+        "Aromatic polyketides",
+        "Chromanes",
+        "Coumarins",
+        "Cyclic polyketides",
+        "Diarylheptanoids",
+        "Diterpenoids",
+        "Fatty Acids and Conjugates",
+        "Fatty acyl glycosides",
+        "Fatty acyls",
+        "Fatty amides",
+        "Fatty esters",
+        "Flavonoids",
+        "Histidine alkaloids",
+        "Isoflavonoids",
+        "Lignans",
+        "Lysine alkaloids",
+        "Macrolides",
+        "Meroterpenoids",
+        "Monoterpenoids",
+        "Naphthalenes",
+        "Nicotinic acid alkaloids",
+        "Nucleosides",
+        "Oligopeptides",
+        "Ornithine alkaloids",
+        "Peptide alkaloids",
+        "Phenolic acids (C6-C1)",
+        "Phenylethanoids (C6-C2)",
+        "Phenylpropanoids (C6-C3)",
+        "Phloroglucinols",
+        "Pseudoalkaloids",
+        "Saccharides",
+        "Sesquiterpenoids",
+        "Small peptides",
+        "Steroids",
+        "Stilbenoids",
+        "Styrylpyrones",
+        "Triterpenoids",
+        "Tryptophan alkaloids",
+        "Tyrosine alkaloids",
+        "Xanthones"
+      ],
+      "filename_pattern": "trained_model_{class_name}_no_x_val.pt"
+    },
+    "svm_model": {
+      "repo_id": "VickiPol/SVM_model",
+      "revision": "main",
+      "filename": "spec2class_trained_svm.sav"
+    },
+    "model_groups": {
+      "all_models": "All 43 binary models + SVM",
+      "test_models": ["Flavonoids", "Steroids"],
+      "binary_only": "All binary models without SVM",
+      "svm_only": "SVM model only"
+    }
+  }
