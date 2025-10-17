@@ -47,8 +47,7 @@ Spec2Class consists of two main components:
 #### Via conda (Recommended)
 
 ```bash
-#conda install -c conda-forge spec2class
-conda install -c Ketzahle spec2class
+conda install -c conda-forge spec2class
 ```
 
 ### For Developers
@@ -104,8 +103,16 @@ spec2class --version
 # Classify spectra from a pickle file
 spec2class classify -i input_spectra.pkl -o results/
 
+# Classify from CSV file (auto-detected)
+spec2class classify -i spectra.csv -o results/
+
 # Classify from MGF file
 spec2class classify -i spectra.mgf -f mgf -o results/
+
+# Specify output format (default: csv)
+spec2class classify -i input.pkl -o results/ --output-format csv
+spec2class classify -i input.pkl -o results/ --output-format tsv
+spec2class classify -i input.pkl -o results/ --output-format all  # csv, tsv, and pickle
 
 # Download models in advance
 spec2class download --group all_models
@@ -142,7 +149,21 @@ Your input file must contain:
 - **DB.**: Spectrum identifier
 - **ExactMass** (optional): Parent ion mass
 
-Example:
+**Supported input formats:**
+- Pickle (.pkl) - NumPy arrays stored directly
+- CSV (.csv) - Arrays as space-separated strings
+- TSV (.tsv) - Arrays as space-separated strings  
+- MGF (.mgf) - Standard MGF format
+- MSP (.msp) - NIST MSP format
+
+Example CSV format:
+```csv
+DB.,mz,Intensity,ExactMass
+spectrum_1,"100.0 150.0 200.0","1000.0 5000.0 3000.0",250.5
+spectrum_2,"120.0 180.0 250.0","2000.0 8000.0 4000.0",280.3
+```
+
+Example pickle format:
 ```python
 import numpy as np
 import pandas as pd
@@ -172,7 +193,13 @@ Results include:
 - **estimated_top3_pred**: Third most likely class
 - **probabilities**: Probability scores for top 3 predictions
 
-Example output:
+**Output formats:**
+- CSV (default) - Comma-separated values
+- TSV - Tab-separated values
+- Pickle - Python pickle format
+- All - Save in all three formats
+
+Example output (CSV):
 ```
          DB.           final_pred  estimated_top2_pred
 0  spectrum_1        Flavonoids         Isoflavonoids
@@ -196,14 +223,32 @@ Full list: `spec2class list`
 
 ### Classify
 ```bash
-spec2class classify -i INPUT [-o OUTPUT_DIR] [-f FORMAT] [-d DEVICE]
+spec2class classify -i INPUT [-o OUTPUT_DIR] [-f FORMAT] [-d DEVICE] [--output-format FORMAT] [--debug]
 
 Options:
   -i, --input          Input file path (required)
   -o, --output-dir     Output directory (default: ./results)
-  -f, --format         Input format: auto, pickle, mgf, msp (default: auto)
+  -n, --output-name    Output filename (default: input filename)
+  -f, --format         Input format: auto, pickle, csv, tsv, mgf, msp (default: auto)
+  --output-format      Output format: csv, tsv, pickle, all (default: csv)
   -d, --device         Device: cpu or cuda (default: cpu)
   --force-download     Force redownload models
+  --debug              Save intermediate prediction vectors (all 43 class probabilities)
+```
+
+**Examples:**
+```bash
+# CSV input, CSV output (default)
+spec2class classify -i data.csv -o results/
+
+# Pickle input, all output formats
+spec2class classify -i data.pkl -o results/ --output-format all
+
+# MGF input, TSV output
+spec2class classify -i data.mgf -o results/ --output-format tsv
+
+# Debug mode - saves prediction vectors
+spec2class classify -i data.pkl -o results/ --debug
 ```
 
 ### Download Models
@@ -255,6 +300,17 @@ Default cache location: `~/.cache/huggingface/hub/`
 
 Spec2Class includes a comprehensive test suite. See [tests/README.md](tests/README.md) for details.
 
+### For Developers
+
+**First, install with dev dependencies:**
+
+```bash
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
+```
+
+This installs pytest, pytest-cov, black, flake8, mypy, and pre-commit.
+
 ### Quick Test
 
 ```bash
@@ -263,13 +319,6 @@ pytest -m "not slow" -v
 
 # Run all tests including integration tests
 pytest --runslow -v
-```
-
-### For Developers
-
-```bash
-# Install test dependencies
-pip install -e ".[dev]"
 
 # Run tests with coverage
 pytest --cov=spec2class --cov-report=html

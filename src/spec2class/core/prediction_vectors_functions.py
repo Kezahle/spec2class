@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import sys
 from .dataset_class import Dataset
-from .utility_functions import get_net, save_df
+from .utility_functions import get_net
 
 
 def test_model_1_batch(trained_model_path, df_binned, net, bin_no, device):
@@ -53,7 +53,7 @@ def create_dataloader(X_data, DBs_list ,params):
 def test_model_batches(trained_model_path,net, device, dataloader, bin_no = 5000):
     """
     This function gets the binary nn model prediction using a dataloader. The dataloader is
-    an in instanse of the DataLoader pytoch class. Loading the data in batches accelarate the process
+    an instanse of the DataLoader pytoch class. Loading the data in batches accelarate the process
     dramatically when GPU is used.
 
     :param trained_model_path: (str)
@@ -146,7 +146,7 @@ def get_pred_vecs(chemclass_list, df_name, df, output_path, end_value, start_val
 
     y_pred_df = get_pred_vec_dfs(chemclass_list, bin_no,
                                             df, net, models_dir, device, params)  # getting predictions for all chemical classes
-    save_df(f"{df_name}_y_pred_df", output_path, y_pred_df)
+    
+    # Removed automatic save_df call - saving is now handled by svm_pred based on output_format
     print('Prediction vectors done')
     return y_pred_df
-

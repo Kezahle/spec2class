@@ -31,6 +31,7 @@ def classify_command(args):
 
     input_path = Path(args.input)
 
+    # Auto-detect format
     if args.format == "auto":
         suffix = input_path.suffix.lower()
         if suffix == ".pkl":
@@ -39,31 +40,54 @@ def classify_command(args):
             format_type = "mgf"
         elif suffix == ".msp":
             format_type = "msp"
+        elif suffix == ".csv":
+            format_type = "csv"
+        elif suffix == ".tsv":
+            format_type = "tsv"
         else:
             print(f"Error: Cannot auto-detect format for {suffix}", file=sys.stderr)
+            print(f"Supported formats: .pkl, .csv, .tsv, .mgf, .msp", file=sys.stderr)
             return 1
     else:
         format_type = args.format
 
-    if format_type in ["mgf", "msp"]:
+    # Parse non-pickle formats
+    if format_type in ["mgf", "msp", "csv", "tsv"]:
         print(f"Parsing {format_type.upper()} file...")
         try:
             if format_type == "mgf":
                 df = parse_mgf_file(str(input_path))
-            else:
+            elif format_type == "msp":
                 df = parse_msp_file(str(input_path))
+            elif format_type == "csv":
+                import pandas as pd
+                from .core.utility_functions import read_df_and_format_mz_intensity_arrays
+                df = read_df_and_format_mz_intensity_arrays(str(input_path))
+            elif format_type == "tsv":
+                import pandas as pd
+                from .core.utility_functions import read_df_and_format_mz_intensity_arrays
+                df = read_df_and_format_mz_intensity_arrays(str(input_path))
+            
+            # Save as temporary pickle for processing
             temp_pkl = input_path.parent / f"{input_path.stem}_temp.pkl"
             df.to_pickle(temp_pkl)
             input_path = temp_pkl
+            created_temp_file = True  # Track that we created a temp file
         except Exception as e:
             print(f"Error parsing file: {e}", file=sys.stderr)
             return 1
+    else:
+        created_temp_file = False
 
     output_dir = args.output_dir if args.output_dir else input_path.parent / "results"
 
     try:
         results = classifier.classify_from_file(
-            str(input_path), output_dir=str(output_dir), output_name=args.output_name
+            str(input_path), 
+            output_dir=str(output_dir), 
+            output_name=args.output_name,
+            output_format=args.output_format,
+            debug=args.debug  # Pass debug flag here
         )
 
         print("\n" + "=" * 60)
@@ -75,6 +99,11 @@ def classify_command(args):
         for class_name, count in class_counts.items():
             percentage = (count / len(results)) * 100
             print(f"  {class_name}: {count} ({percentage:.1f}%)")
+        
+        # Clean up temp file if created
+        if created_temp_file:
+            temp_pkl.unlink(missing_ok=True)
+        
         return 0
 
     except Exception as e:
@@ -169,14 +198,25 @@ def main():
     classify_parser.add_argument(
         "-f",
         "--format",
-        choices=["auto", "pickle", "mgf", "msp"],
+        choices=["auto", "pickle", "csv", "tsv", "mgf", "msp"],
         default="auto",
-        help="Input format",
+        help="Input format (default: auto)",
+    )
+    classify_parser.add_argument(
+        "--output-format",
+        choices=["csv", "tsv", "pickle", "all"],
+        default="csv",
+        help="Output format (default: csv). Use 'all' for all formats.",
     )
     classify_parser.add_argument(
         "-d", "--device", choices=["cpu", "cuda"], default="cpu", help="Device"
     )
     classify_parser.add_argument("--force-download", action="store_true")
+    classify_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Save intermediate prediction vectors (all 43 class probabilities)",
+    )
 
     # Download
     download_parser = subparsers.add_parser("download", help="Download models")

@@ -74,11 +74,46 @@ class Spec2ClassClassifier:
         print(f"  SVM model: {self.svm_model_path}")
         print(f"  Device: {self.device}")
 
+    def _save_results(self, df: pd.DataFrame, output_dir: str, filename: str, output_format: str):
+        """
+        Save results in the specified format(s)
+        
+        Args:
+            df: DataFrame with results
+            output_dir: Directory to save results
+            filename: Base filename (without extension)
+            output_format: Format to save ('csv', 'tsv', 'pickle', or 'all')
+        """
+        from pathlib import Path
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        
+        if output_format == "all":
+            # Save in all formats
+            df.to_csv(output_path / f"{filename}.csv", index=False)
+            df.to_csv(output_path / f"{filename}.tsv", sep='\t', index=False)
+            df.to_pickle(output_path / f"{filename}.pkl")
+            print(f"Saved {filename} in all formats (csv, tsv, pkl)")
+        elif output_format == "csv":
+            csv_path = output_path / f"{filename}.csv"
+            df.to_csv(csv_path, index=False)
+            print(f"Saved {csv_path}")
+        elif output_format == "tsv":
+            tsv_path = output_path / f"{filename}.tsv"
+            df.to_csv(tsv_path, sep='\t', index=False)
+            print(f"Saved {tsv_path}")
+        elif output_format == "pickle":
+            pkl_path = output_path / f"{filename}.pkl"
+            df.to_pickle(pkl_path)
+            print(f"Saved {pkl_path}")
+
     def classify_from_file(
         self,
         input_path: str,
         output_dir: Optional[str] = None,
         output_name: Optional[str] = None,
+        output_format: str = "csv",
+        debug: bool = False,
     ) -> pd.DataFrame:
         """
         Classify spectra from input file using original Spec2Class logic
@@ -87,6 +122,8 @@ class Spec2ClassClassifier:
             input_path: Path to input pickle/csv/tsv file
             output_dir: Optional output directory
             output_name: Optional output filename
+            output_format: Output format - 'csv' (default), 'tsv', 'pickle', or 'all'
+            debug: If True, save intermediate prediction vectors (all 43 class probabilities)
 
         Returns:
             DataFrame with predictions
@@ -108,6 +145,7 @@ class Spec2ClassClassifier:
 
         # Run original Spec2Class pipeline
         print("Step 1/3: Binning spectra...")
+        print(f"Debug mode: {debug}")  # Debug info
         binned_df = binning_df(
             input_df,
             self.bin_width,
@@ -145,24 +183,42 @@ class Spec2ClassClassifier:
             self.params
         )
 
+        # Save prediction vectors if debug mode is enabled
+        if debug:
+            print("Debug mode: Saving prediction vectors...")
+            self._save_results(
+                pred_vecs_df,
+                output_dir,
+                f"{output_name}_y_pred_df",
+                output_format
+            )
+
         print("Step 3/3: Final SVM prediction...")
         results_df = svm_pred(
             self.svm_model_path,
             output_dir,
             output_name,
             pred_vecs_df,
-            self.chemclass_list
+            self.chemclass_list,
+            output_format=output_format
         )
 
         print(f"\n✓ Classification complete! Results saved to {output_dir}")
         return results_df
 
-    def classify_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+    def classify_dataframe(
+        self, 
+        df: pd.DataFrame, 
+        output_format: str = "csv",
+        debug: bool = False,
+    ) -> pd.DataFrame:
         """
         Classify spectra from a DataFrame
 
         Args:
             df: DataFrame with 'mz', 'Intensity', 'DB.' columns
+            output_format: Output format - 'csv' (default), 'tsv', 'pickle', or 'all'
+            debug: If True, save intermediate prediction vectors
 
         Returns:
             DataFrame with predictions
@@ -175,7 +231,11 @@ class Spec2ClassClassifier:
             temp_path = tmp.name
 
         try:
-            results = self.classify_from_file(temp_path)
+            results = self.classify_from_file(
+                temp_path, 
+                output_format=output_format,
+                debug=debug
+            )
             return results
         finally:
             PathLib(temp_path).unlink(missing_ok=True)
