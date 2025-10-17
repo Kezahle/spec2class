@@ -4,24 +4,34 @@
 import torch
 import pandas as pd
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 from .core import binning_df, get_pred_vecs, svm_pred
 from .models import check_and_download_models, get_cache_info
-from .config import CHEMICAL_CLASSES
+from .config import get_chemical_classes
 
 
 class Spec2ClassClassifier:
     """High-level wrapper for Spec2Class using original core code"""
 
-    def __init__(self, device: str = "cpu", force_download: bool = False):
+    def __init__(
+        self, 
+        mode: Literal["positive", "negative"] = "positive",
+        device: str = "cpu", 
+        force_download: bool = False
+    ):
         """
         Initialize Spec2Class classifier
 
         Args:
+            mode: Ionization mode - 'positive' or 'negative'
             device: Device to run models on ('cpu' or 'cuda')
             force_download: Force redownload models from HuggingFace
         """
+        if mode not in ["positive", "negative"]:
+            raise ValueError(f"Mode must be 'positive' or 'negative', got '{mode}'")
+        
+        self.mode = mode
         self.device = device if device == "cuda" and torch.cuda.is_available() else "cpu"
         
         # Model parameters from original config
@@ -39,17 +49,17 @@ class Spec2ClassClassifier:
             'num_workers': self.num_workers
         }
 
-        print("Initializing Spec2Class...")
+        print(f"Initializing Spec2Class ({mode} mode)...")
 
         # Download models if needed
         if force_download:
             from .models import download_models
-            download_models(group_name="all_models", force=True)
+            download_models(group_name="all_models", mode=mode, force=True)
         else:
-            check_and_download_models(group_name="all_models")
+            check_and_download_models(group_name="all_models", mode=mode)
 
         # Get paths to downloaded models
-        cache_info = get_cache_info()
+        cache_info = get_cache_info(mode=mode)
         
         # Find binary models directory
         binary_cache = cache_info["binary_models"]
@@ -58,18 +68,18 @@ class Spec2ClassClassifier:
             first_file_path = Path(binary_cache["files"][0]["path"])
             self.binary_models_dir = str(first_file_path.parent)
         else:
-            raise RuntimeError("Binary models not found in cache")
+            raise RuntimeError(f"Binary models ({mode} mode) not found in cache")
 
         # Find SVM model path
         svm_cache = cache_info["svm_model"]
         if svm_cache.get("files"):
             self.svm_model_path = svm_cache["files"][0]["path"]
         else:
-            raise RuntimeError("SVM model not found in cache")
+            raise RuntimeError(f"SVM model ({mode} mode) not found in cache")
 
-        self.chemclass_list = CHEMICAL_CLASSES
+        self.chemclass_list = get_chemical_classes(mode)
 
-        print(f"✓ Spec2Class ready! Using {len(self.chemclass_list)} classes")
+        print(f"✓ Spec2Class ready! Using {len(self.chemclass_list)} classes ({mode} mode)")
         print(f"  Binary models: {self.binary_models_dir}")
         print(f"  SVM model: {self.svm_model_path}")
         print(f"  Device: {self.device}")
@@ -243,6 +253,7 @@ class Spec2ClassClassifier:
     def get_model_info(self) -> dict:
         """Get information about loaded models"""
         return {
+            "mode": self.mode,
             "device": self.device,
             "num_classes": len(self.chemclass_list),
             "classes": self.chemclass_list,
@@ -258,6 +269,7 @@ class Spec2ClassClassifier:
         print("\n" + "=" * 60)
         print("Spec2Class Model Information")
         print("=" * 60)
+        print(f"Mode: {info['mode']}")
         print(f"Device: {info['device']}")
         print(f"Output classes: {info['num_classes']}")
         print(f"m/z range: {info['mz_range'][0]}-{info['mz_range'][1]} Da")

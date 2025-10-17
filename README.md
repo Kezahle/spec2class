@@ -13,10 +13,13 @@ Spec2Class is an ensemble classification model for predicting chemical classes o
 
 ## Features
 
-- **43 binary neural network classifiers** for different chemical classes
-- **SVM ensemble model** for final multiclass prediction
+- **Binary neural network classifiers** for different chemical classes
+  - 43 classes for positive ionization mode
+  - 33 classes for negative ionization mode
+- **SVM ensemble model** for final multiclass prediction (mode-specific)
+- **Positive and negative ionization mode support**
 - **Automatic model downloading** from HuggingFace Hub
-- **Multiple input formats**: Pickle, MGF, MSP
+- **Multiple input formats**: Pickle, MGF, MSP, CSV, TSV
 - **Command-line interface** and **Python API**
 - **GPU support** for faster inference
 
@@ -100,25 +103,33 @@ spec2class --version
 ### Command Line Interface
 
 ```bash
-# Classify spectra from a pickle file
-spec2class classify -i input_spectra.pkl -o results/
+# Classify spectra from a pickle file (MUST specify mode)
+spec2class classify -i input_spectra.pkl -m positive -o results/
+spec2class classify -i input_spectra.pkl -m negative -o results/
 
-# Classify from CSV file (auto-detected)
-spec2class classify -i spectra.csv -o results/
+# Classify from CSV file (auto-detected format)
+spec2class classify -i spectra.csv -m positive -o results/
 
 # Classify from MGF file
-spec2class classify -i spectra.mgf -f mgf -o results/
+spec2class classify -i spectra.mgf -m negative -f mgf -o results/
 
 # Specify output format (default: csv)
-spec2class classify -i input.pkl -o results/ --output-format csv
-spec2class classify -i input.pkl -o results/ --output-format tsv
-spec2class classify -i input.pkl -o results/ --output-format all  # csv, tsv, and pickle
+spec2class classify -i input.pkl -m positive -o results/ --output-format csv
+spec2class classify -i input.pkl -m negative -o results/ --output-format tsv
+spec2class classify -i input.pkl -m positive -o results/ --output-format all  # csv, tsv, and pickle
 
-# Download models in advance
-spec2class download --group all_models
+# Download models (MUST specify mode)
+spec2class download --group all_models -m positive
+spec2class download --group all_models -m negative
+spec2class download --group all_models -m both  # Download both modes at once
 
-# Check model status
-spec2class status
+# Check model status (MUST specify mode)
+spec2class status -m positive
+spec2class status -m negative
+
+# View cache info (MUST specify mode)
+spec2class cache info -m positive
+spec2class cache info -m negative
 ```
 
 ### Python API
@@ -126,16 +137,20 @@ spec2class status
 ```python
 from spec2class import Spec2ClassClassifier
 
-# Initialize classifier (downloads models if needed)
-classifier = Spec2ClassClassifier(device='cpu')
+# Initialize classifier for positive mode (downloads models if needed)
+classifier_pos = Spec2ClassClassifier(mode='positive', device='cpu')
+
+# Initialize classifier for negative mode
+classifier_neg = Spec2ClassClassifier(mode='negative', device='cpu')
 
 # Classify from file
-results = classifier.classify_from_file('input_spectra.pkl')
+results_pos = classifier_pos.classify_from_file('input_spectra.pkl')
+results_neg = classifier_neg.classify_from_file('input_spectra.pkl')
 
 # Classify from DataFrame
 import pandas as pd
 df = pd.read_pickle('spectra.pkl')
-results = classifier.classify_dataframe(df)
+results = classifier_pos.classify_dataframe(df)
 
 # View results
 print(results[['DB.', 'final_pred', 'estimated_top2_pred']])
@@ -208,25 +223,38 @@ Example output (CSV):
 
 ## Predicted Classes
 
-Spec2Class predicts 43 chemical classes including:
+Spec2Class predicts different chemical classes depending on ionization mode:
 
+### Positive Mode (43 classes)
 - Flavonoids, Isoflavonoids, Phenolic acids
-- Steroids, Triterpenoids, Diterpenoids
-- Alkaloids (various types)
-- Fatty acids and derivatives
-- Coumarins, Lignans, Stilbenoids
+- Steroids, Triterpenoids, Diterpenoids, Monoterpenoids, Sesquiterpenoids
+- Various alkaloid types (Anthranilic acid, Histidine, Lysine, Nicotinic acid, Ornithine, Peptide, Tryptophan, Tyrosine)
+- Fatty acids and derivatives (Fatty Acids and Conjugates, Fatty acyl glycosides, Fatty acyls, Fatty amides, Fatty esters)
+- Coumarins, Lignans, Stilbenoids, Xanthones
+- Aminosugars and aminoglycosides, Nucleosides, Oligopeptides, Small peptides
 - And more...
 
-Full list: `spec2class list`
+### Negative Mode (33 classes)
+- Flavonoids, Isoflavonoids, Phenolic acids
+- Steroids, Triterpenoids, Diterpenoids, Monoterpenoids, Sesquiterpenoids
+- Alkaloid types (Anthranilic acid, Nicotinic acid, Tryptophan, Tyrosine)
+- Fatty Acids and Conjugates
+- Coumarins, Lignans, Stilbenoids, Xanthones
+- Nucleosides, Oligopeptides, Small peptides
+- Polycyclic aromatic polyketides
+- And more...
+
+**Full list:** `spec2class list`
 
 ## CLI Commands
 
 ### Classify
 ```bash
-spec2class classify -i INPUT [-o OUTPUT_DIR] [-f FORMAT] [-d DEVICE] [--output-format FORMAT] [--debug]
+spec2class classify -i INPUT -m MODE [-o OUTPUT_DIR] [-f FORMAT] [-d DEVICE] [--output-format FORMAT] [--debug]
 
 Options:
   -i, --input          Input file path (required)
+  -m, --mode           Ionization mode: positive or negative (REQUIRED)
   -o, --output-dir     Output directory (default: ./results)
   -n, --output-name    Output filename (default: input filename)
   -f, --format         Input format: auto, pickle, csv, tsv, mgf, msp (default: auto)
@@ -238,27 +266,40 @@ Options:
 
 **Examples:**
 ```bash
-# CSV input, CSV output (default)
-spec2class classify -i data.csv -o results/
+# CSV input, CSV output (default), positive mode
+spec2class classify -i data.csv -m positive -o results/
 
-# Pickle input, all output formats
-spec2class classify -i data.pkl -o results/ --output-format all
+# Pickle input, all output formats, negative mode
+spec2class classify -i data.pkl -m negative -o results/ --output-format all
 
-# MGF input, TSV output
-spec2class classify -i data.mgf -o results/ --output-format tsv
+# MGF input, TSV output, positive mode
+spec2class classify -i data.mgf -m positive -o results/ --output-format tsv
 
 # Debug mode - saves prediction vectors
-spec2class classify -i data.pkl -o results/ --debug
+spec2class classify -i data.pkl -m negative -o results/ --debug
 ```
 
 ### Download Models
 ```bash
-spec2class download [--group GROUP] [--model MODEL] [--force]
+spec2class download -m MODE [--group GROUP] [--model MODEL] [--force]
 
 Options:
-  --group    Download model group: all_models, test_models
-  --model    Download specific model by name
-  --force    Force redownload even if cached
+  -m, --mode     Ionization mode: positive, negative, or both (REQUIRED)
+  --group        Download model group: all_models, test_models
+  --model        Download specific model by name
+  --force        Force redownload even if cached
+```
+
+**Examples:**
+```bash
+# Download all positive mode models
+spec2class download --group all_models -m positive
+
+# Download all negative mode models
+spec2class download --group all_models -m negative
+
+# Download both modes at once
+spec2class download --group all_models -m both
 ```
 
 ### List Models
@@ -271,12 +312,24 @@ Options:
 
 ### Check Status
 ```bash
-spec2class status
+spec2class status -m MODE
+
+Options:
+  -m, --mode   Ionization mode: positive or negative (REQUIRED)
+```
+
+**Examples:**
+```bash
+# Check positive mode cache status
+spec2class status -m positive
+
+# Check negative mode cache status
+spec2class status -m negative
 ```
 
 ### Manage Cache
 ```bash
-spec2class cache {info|directory|clear} [--model MODEL] [-y]
+spec2class cache {info|directory|clear} -m MODE [--model MODEL] [-y]
 
 Subcommands:
   info       Show cache information
@@ -284,15 +337,37 @@ Subcommands:
   clear      Clear cached models
 
 Options:
-  --model    Specific model to clear
-  -y, --yes  Skip confirmation prompt
+  -m, --mode   Ionization mode: positive or negative (REQUIRED)
+  --model      Specific model to clear
+  -y, --yes    Skip confirmation prompt
+```
+
+**Examples:**
+```bash
+# View cache info for positive mode
+spec2class cache info -m positive
+
+# View cache info for negative mode
+spec2class cache info -m negative
+
+# Show cache directory for a mode
+spec2class cache directory -m positive
+
+# Clear negative mode cache
+spec2class cache clear -m negative -y
 ```
 
 ## Model Storage
 
 Models are cached locally using HuggingFace Hub:
-- **Binary models**: `VickiPol/binary_models` (43 models, ~1.5 GB)
-- **SVM model**: `VickiPol/SVM_model` (~10 MB)
+
+**Positive Mode:**
+- Binary models: `VickiPol/binary_models` (43 models, ~1.5 GB)
+- SVM model: `VickiPol/SVM_model` (~10 MB)
+
+**Negative Mode:**
+- Binary models: `VickiPol/binary_models_negative_mode` (43 models, ~1.5 GB)
+- SVM model: `VickiPol/SVM_model_negative_mode` (~10 MB)
 
 Default cache location: `~/.cache/huggingface/hub/`
 
@@ -407,15 +482,16 @@ This work builds upon established methods in metabolomics and deep learning for 
 If you encounter issues downloading models:
 
 ```bash
-# Check cache location
-spec2class cache directory
+# Check cache location (MUST specify mode)
+spec2class cache directory -m positive
 
-# Check what's cached
-spec2class cache info
+# Check what's cached (MUST specify mode)
+spec2class cache info -m positive
+spec2class cache info -m negative
 
 # Clear cache and redownload
-spec2class cache clear -y
-spec2class download --group all_models
+spec2class cache clear -m positive -y
+spec2class download --group all_models -m positive
 ```
 
 ### Import Errors
@@ -439,10 +515,24 @@ To use GPU acceleration:
 python -c "import torch; print(torch.cuda.is_available())"
 
 # Use GPU in classifier
-spec2class classify -i input.pkl -d cuda
+spec2class classify -i input.pkl -m positive -d cuda
 ```
 
 Or in Python:
 ```python
-classifier = Spec2ClassClassifier(device='cuda')
+classifier = Spec2ClassClassifier(mode='positive', device='cuda')
 ```
+
+### Ionization Mode Selection
+
+**Important:** Always specify the correct ionization mode (`-m positive` or `-m negative`) that matches your experimental data:
+
+```bash
+# For positive mode data
+spec2class classify -i positive_data.pkl -m positive
+
+# For negative mode data
+spec2class classify -i negative_data.pkl -m negative
+```
+
+Using the wrong mode will result in incorrect predictions!

@@ -27,7 +27,11 @@ def classify_command(args):
     print(f"Spec2Class v{__version__}")
     print("=" * 60)
 
-    classifier = Spec2ClassClassifier(device=args.device, force_download=args.force_download)
+    classifier = Spec2ClassClassifier(
+        mode=args.mode,
+        device=args.device, 
+        force_download=args.force_download
+    )
 
     input_path = Path(args.input)
 
@@ -114,13 +118,23 @@ def classify_command(args):
 def download_command(args):
     """Handle download command"""
     try:
-        if args.group:
-            download_models(group_name=args.group, force=args.force)
-        elif args.model:
-            download_models(model_names=[args.model], force=args.force)
+        modes_to_download = []
+        
+        if args.mode == "both":
+            modes_to_download = ["positive", "negative"]
         else:
-            download_models(group_name="all_models", force=args.force)
-        print("\n✓ Download complete!")
+            modes_to_download = [args.mode]
+        
+        for mode in modes_to_download:
+            print(f"\nDownloading {mode} mode models...")
+            if args.group:
+                download_models(group_name=args.group, mode=mode, force=args.force)
+            elif args.model:
+                download_models(model_names=[args.model], mode=mode, force=args.force)
+            else:
+                download_models(group_name="all_models", mode=mode, force=args.force)
+            print(f"✓ Download complete for {mode} mode!")
+        
         return 0
     except Exception as e:
         print(f"\nError: {e}", file=sys.stderr)
@@ -135,24 +149,35 @@ def list_command(args):
             models = get_models_in_group(group_name)
             print(f"\n{group_name}: {len(models)} models")
     else:
-        from .config import CHEMICAL_CLASSES
+        from .config import CHEMICAL_CLASSES_POSITIVE, CHEMICAL_CLASSES_NEGATIVE
 
-        print(f"\nBinary Classifiers ({len(CHEMICAL_CLASSES)}):")
-        for i, name in enumerate(CHEMICAL_CLASSES, 1):
+        print(f"\n=== Positive Mode ({len(CHEMICAL_CLASSES_POSITIVE)} classes) ===")
+        for i, name in enumerate(CHEMICAL_CLASSES_POSITIVE, 1):
             print(f"  {i:2d}. {name}")
-        print(f"\nSVM Model: svm_model")
+        
+        print(f"\n=== Negative Mode ({len(CHEMICAL_CLASSES_NEGATIVE)} classes) ===")
+        for i, name in enumerate(CHEMICAL_CLASSES_NEGATIVE, 1):
+            print(f"  {i:2d}. {name}")
+        
+        print(f"\n=== SVM Models ===")
+        print("  - svm_model (positive mode)")
+        print("  - svm_model (negative mode)")
+        
+        print(f"\nNote: Different chemical classes available for each ionization mode")
     return 0
 
 
 def status_command(args):
     """Handle status command"""
     try:
-        print_model_status(group_name=args.group if hasattr(args, "group") else None)
-        cached = get_cached_models()
-        from .config import CHEMICAL_CLASSES
-
-        total = len(CHEMICAL_CLASSES) + 1
-        print(f"\nSummary: {len(cached)}/{total} models cached")
+        from .config import get_chemical_classes
+        
+        print_model_status(mode=args.mode, group_name=args.group if hasattr(args, "group") else None)
+        cached = get_cached_models(mode=args.mode)
+        
+        num_classes = len(get_chemical_classes(args.mode))
+        total = num_classes + 1  # binary models + SVM
+        print(f"\nSummary: {len(cached)}/{total} models cached ({args.mode} mode)")
         return 0
     except Exception as e:
         print(f"\nError: {e}", file=sys.stderr)
@@ -163,14 +188,15 @@ def cache_command(args):
     """Handle cache management"""
     try:
         if args.cache_action == "info":
-            print_cache_info(verbose=getattr(args, "verbose", False))
+            print_cache_info(mode=args.mode, verbose=getattr(args, "verbose", False))
         elif args.cache_action == "directory":
-            print(f"\n{get_cache_directory()}")
+            print(f"\nCache directory: {get_cache_directory(mode=args.mode)}")
+            print(f"Mode: {args.mode}")
         elif args.cache_action == "clear":
             model_names = [args.model] if hasattr(args, "model") and args.model else None
             confirm = not getattr(args, "yes", False)
-            if clear_model_cache(model_names=model_names, confirm=confirm):
-                print("\n✓ Cache cleared")
+            if clear_model_cache(model_names=model_names, mode=args.mode, confirm=confirm):
+                print(f"\n✓ Cache cleared ({args.mode} mode)")
                 return 0
             else:
                 return 1
@@ -193,6 +219,13 @@ def main():
     # Classify
     classify_parser = subparsers.add_parser("classify", help="Classify MS/MS spectra")
     classify_parser.add_argument("-i", "--input", required=True, help="Input file path")
+    classify_parser.add_argument(
+        "-m",
+        "--mode",
+        choices=["positive", "negative"],
+        required=True,
+        help="Ionization mode (REQUIRED)",
+    )
     classify_parser.add_argument("-o", "--output-dir", help="Output directory")
     classify_parser.add_argument("-n", "--output-name", help="Output filename")
     classify_parser.add_argument(
@@ -220,6 +253,13 @@ def main():
 
     # Download
     download_parser = subparsers.add_parser("download", help="Download models")
+    download_parser.add_argument(
+        "-m",
+        "--mode",
+        choices=["positive", "negative", "both"],
+        required=True,
+        help="Ionization mode: positive, negative, or both (REQUIRED)",
+    )
     download_parser.add_argument("--group", choices=get_model_groups())
     download_parser.add_argument("--model", help="Specific model name")
     download_parser.add_argument("--force", action="store_true")
@@ -229,11 +269,25 @@ def main():
     list_parser.add_argument("--groups", action="store_true", help="List groups")
 
     # Status
-    subparsers.add_parser("status", help="Show cache status")
+    status_parser = subparsers.add_parser("status", help="Show cache status")
+    status_parser.add_argument(
+        "-m",
+        "--mode",
+        choices=["positive", "negative"],
+        required=True,
+        help="Ionization mode (REQUIRED)",
+    )
 
     # Cache
     cache_parser = subparsers.add_parser("cache", help="Manage cache")
     cache_parser.add_argument("cache_action", choices=["info", "directory", "clear"])
+    cache_parser.add_argument(
+        "-m",
+        "--mode",
+        choices=["positive", "negative"],
+        required=True,
+        help="Ionization mode (REQUIRED)",
+    )
     cache_parser.add_argument("--model", help="Specific model")
     cache_parser.add_argument("-v", "--verbose", action="store_true")
     cache_parser.add_argument("-y", "--yes", action="store_true")

@@ -1,7 +1,9 @@
 {
-    "binary_models": {
+  "binary_models": {
+    "positive": {
       "repo_id": "VickiPol/binary_models",
       "revision": "main",
+      "filename_pattern": "trained_model_{class_name}_no_x_val.pt",
       "classes": [
         "Aminosugars and aminoglycosides",
         "Anthranilic acid alkaloids",
@@ -46,18 +48,64 @@
         "Tryptophan alkaloids",
         "Tyrosine alkaloids",
         "Xanthones"
-      ],
-      "filename_pattern": "trained_model_{class_name}_no_x_val.pt"
+      ]
     },
-    "svm_model": {
+    "negative": {
+      "repo_id": "VickiPol/binary_models_negative_mode",
+      "revision": "main",
+      "filename_pattern": "trained_model_{class_name}_no_x_val.pt",
+      "classes": [
+        "Anthranilic_acid_alkaloids",
+        "Apocarotenoids",
+        "Aromatic_polyketides",
+        "Chromanes",
+        "Coumarins",
+        "Cyclic_polyketides",
+        "Diarylheptanoids",
+        "Diterpenoids",
+        "Fatty_Acids_and_Conjugates",
+        "Flavonoids",
+        "Isoflavonoids",
+        "Lignans",
+        "Meroterpenoids",
+        "Monoterpenoids",
+        "Naphthalenes",
+        "Nicotinic_acid_alkaloids",
+        "Nucleosides",
+        "Oligopeptides",
+        "Phenolic_acids_(C6-C1)",
+        "Phenylethanoids_(C6-C2)",
+        "Phenylpropanoids_(C6-C3)",
+        "Phloroglucinols",
+        "Polycyclic_aromatic_polyketides",
+        "Pseudoalkaloids",
+        "Saccharides",
+        "Sesquiterpenoids",
+        "Small_peptides",
+        "Steroids",
+        "Stilbenoids",
+        "Triterpenoids",
+        "Tryptophan_alkaloids",
+        "Tyrosine_alkaloids",
+        "Xanthones"
+      ]
+    }
+  },
+  "svm_model": {
+    "positive": {
       "repo_id": "VickiPol/SVM_model",
       "revision": "main",
       "filename": "spec2class_trained_svm.sav"
     },
-    "model_groups": {
-      "all_models": "All 43 binary models + SVM",
-      "test_models": ["Flavonoids", "Steroids"],
-      "binary_only": "All binary models without SVM",
-      "svm_only": "SVM model only"
+    "negative": {
+      "repo_id": "VickiPol/SVM_model_negative_mode",
+      "revision": "main",
+      "filename": "20250606_spec2class_trained_svm.sav"
     }
+  },
+  "model_groups": {
+    "all_models": "All binary models + SVM for the specified mode",
+    "binary_only": "All binary models without SVM",
+    "svm_only": "SVM model only"
   }
+}
